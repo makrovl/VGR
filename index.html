@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bundesbank Zeitreihen-Daten</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    
+    /* Header Bereich */
+    .page-header {
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+    }
+    
+    .page-header h1 {
+      color: #000000;
+      margin-bottom: 10px;
+    }
+    
+    .intro-text {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 15px;
+    }
+
+    /* Auswahlbereich */
+    .selection-section {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .filter-option {
+      margin: 15px 0;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+    }
+    
+    .select-container {
+      display: inline-block;
+      margin-right: 30px;
+      vertical-align: top;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .select-container h2 {
+      color: #000000;
+      font-size: 16px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    /* Form Elemente */
+    select {
+      width: auto;
+      min-width: 300px;
+      max-width: 400px;
+      margin: 10px 0;
+      padding: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      background: white;
+    }
+    
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      cursor: pointer;
+      background: #f8f9fa; /* Grau statt Blau */
+      color: #000000; /* Schwarze Schrift */
+      border: 1px solid #6c757d;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+    
+    button:hover {
+      background: #e9ecef;
+    }
+    
+    button:active {
+      transform: translateY(1px);
+    }
+
+    /* Info Boxen */
+    #dataInfo {
+      margin: 15px 0;
+      padding: 12px 15px;
+      background: #f8f9fa; /* Hellgrau statt Blau */
+      border: 1px solid #dee2e6; /* Grau statt Blau */
+      border-radius: 6px;
+      color: #495057; /* Dunkelgrau statt Blau */
+    }
+    
+    #sourceInfo {
+      font-size: 90%;
+      color: #666;
+      margin: 25px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 4px; /* Keine blaue linke Linie */
+    }
+    
+    label {
+      margin-right: 15px;
+      font-weight: normal;
+    }
+    
+    .options-section {
+      margin: 15px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+    }
+    
+    /* Chart Bereich */
+    #chartContainer {
+      position: relative;
+      height: 60vh;
+      min-height: 400px;
+      max-height: 600px;
+      margin-top: 25px;
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .download-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      border: 1px solid #6c757d; /* Grau statt Blau */
+      border-radius: 4px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #495057; /* Dunkelgrau statt Blau */
+      display: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .download-btn:hover {
+      background: #f8f9fa;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .select-container {
+        display: block;
+        margin-right: 0;
+        margin-bottom: 20px;
+        width: 100%;
+      }
+      
+      select {
+        min-width: 100%;
+        max-width: 100%;
+      }
+    }
+</style>
+</head>
+<body>
+  <div class="page-header">
+    <h1>Bundesbank Zeitreihen-Daten</h1>
+    <p class="intro-text">Wählen Sie eine BIP- oder Verwendungsvariable aus, um deren Daten anzuzeigen und zu plotten.</p>
+  </div>
+  
+  <div class="selection-section">
+    <div class="filter-option">
+      <label>
+        <input id="adjustedOnly" type="checkbox"> 
+        Nur saisonbereinigte Reihen anzeigen
+      </label>
+    </div>
+
+    <div class="select-container">
+      <h2>BIP (real, saisonbereinigt)</h2>
+      <select id="bipSelect" multiple size="5" onchange="updateOptions('bip')"></select>
+    </div>
+
+    <div class="select-container">
+      <h2>Verwendung des BIP (nominal, saisonbereinigt)</h2>
+      <select id="verwendungSelect" multiple size="10" onchange="updateOptions('verw')"></select>
+    </div>
+
+    <div style="clear: both;"></div>
+
+    <div id="bipOptions" class="options-section" style="display: none;">
+      <label>
+        <input checked name="bipScale" type="radio" value="level"> Level
+      </label>
+      <label>
+        <input name="bipScale" type="radio" value="log"> Log
+      </label>
+      <label>
+        Index auf 100 im Jahr: 
+        <input id="baseYear" type="number" value="1995" style="width: 80px;">
+      </label>
+    </div>
+
+    <div id="verwendungOptions" class="options-section" style="display: none;">
+      <label>
+        <input checked name="verwScale" type="radio" value="level"> Level
+      </label>
+      <label>
+        <input name="verwScale" type="radio" value="log"> Log
+      </label>
+      <label>
+        <input id="percentCheck" type="checkbox"> Als Prozent des BIP
+      </label>
+    </div>
+
+    <p>
+      <button onclick="plotData()">Plot erstellen</button>
+      <button onclick="clearPlot()">Plot löschen</button>
+    </p>
+  </div>
+
+  <div id="dataInfo">Bereit zum Laden der Daten...</div>
+
+  <div id="chartContainer">
+    <canvas id="chart"></canvas>
+    <button id="downloadBtn" onclick="downloadChart()" title="Diagramm als PNG herunterladen" class="download-btn">
+      📥 PNG herunterladen
+    </button>
+  </div>
+
+  <div id="sourceInfo"></div>
+
+  <script>
+    let currentData = null;
+    let indexList = [];
+    let chart = null;
+    const ctx = document.getElementById('chart').getContext('2d');
+
+    function updateOptions(source) {
+      const bipSel = document.getElementById('bipSelect');
+      const verwSel = document.getElementById('verwendungSelect');
+      
+      if (source === 'bip' && bipSel.selectedOptions.length > 0) {
+        Array.from(verwSel.options).forEach(opt => opt.selected = false);
+        document.getElementById('bipOptions').style.display = 'block';
+        document.getElementById('verwendungOptions').style.display = 'none';
+      } else if (source === 'verw' && verwSel.selectedOptions.length > 0) {
+        Array.from(bipSel.options).forEach(opt => opt.selected = false);
+        document.getElementById('bipOptions').style.display = 'none';
+        document.getElementById('verwendungOptions').style.display = 'block';
+      } else if (bipSel.selectedOptions.length === 0 && verwSel.selectedOptions.length === 0) {
+        document.getElementById('bipOptions').style.display = 'none';
+        document.getElementById('verwendungOptions').style.display = 'none';
+      }
+    }
+
+    async function loadIndex() {
+      try {
+        const r = await fetch('data/index.json');
+        if (!r.ok) {
+          throw new Error(`Fehler beim Laden des Index: ${r.status} ${r.statusText}`);
+        }
+        const idx = await r.json();
+        indexList = idx;
+        
+        const bipSel = document.getElementById('bipSelect');
+        const verwSel = document.getElementById('verwendungSelect');
+        bipSel.innerHTML = '';
+        verwSel.innerHTML = '';
+        
+        const adjustedOnly = document.getElementById('adjustedOnly').checked;
+        
+        idx.forEach(item => {
+          if (adjustedOnly && !item.label.includes('saisonbereinigt')) return;
+          
+          const opt = document.createElement('option');
+          opt.value = item.file;
+          let text = item.label || item.id;
+          
+          if (item.flow === 'BBXN1') {
+            const match = text.match(/\/ ([^\/]+) \//);
+            if (match) text = 'BIP ' + match[1];
+          } else if (item.flow === 'BBNZ1' && item.id.startsWith('Q.DE.Y.G.')) {
+            const shortLabels = {			
+                'Q.DE.Y.G.0108.A': 'Inländische Verwendung',
+                'Q.DE.Y.G.0103.A': 'Private Konsumausgaben',
+                'Q.DE.S.G.0106.A': 'Staatskonsum',
+                'Q.DE.Y.G.0152.A': 'Ausrüstungsinvestitionen',
+                'Q.DE.Y.G.0155.A': 'Bauinvestitionen',
+                'Q.DE.Y.G.0161.A': 'Vorratsveränderungen',
+                'Q.DE.Y.G.0112.A': 'Außenbeitrag',
+                'Q.DE.Y.G.0110.A': 'Exporte',
+                'Q.DE.Y.G.0111.A': 'Importe',
+                'Q.DE.Y.G.0151.A': 'Bruttoanlageinvestitionen',
+                'Q.DE.Y.G.0156.A': 'Wohnbauten',
+                'Q.DE.Y.G.0157.A': 'Nichtwohnbauten',
+                'Q.DE.Y.G.0158.A': 'Sonstige Anlagen',
+                'Q.DE.Y.G.0165.A': 'Staatliche Anlageinvestitionen',
+                'Q.DE.Y.G.0166.A': 'Staatliche Ausrüstung',
+                'Q.DE.Y.G.0167.A': 'Staatliche Bauinvestitionen',
+                'Q.DE.Y.G.0168.A': 'Staatliche Wohnbauten',
+                'Q.DE.Y.G.0169.A': 'Staatliche Nichtwohnbauten',
+                'Q.DE.Y.G.0170.A': 'Staatliche Sonstige Anlagen',
+                'Q.DE.Y.G.0172.A': 'Private Anlageinvestitionen',
+                'Q.DE.Y.G.0173.A': 'Private Ausrüstung',
+                'Q.DE.Y.G.0174.A': 'Private Bauinvestitionen',
+                'Q.DE.Y.G.0175.A': 'Private Wohnbauten',
+                'Q.DE.Y.G.0176.A': 'Private Nichtwohnbauten',
+                'Q.DE.Y.G.0177.A': 'Private Sonstige Anlagen',
+                'Q.DE.Y.G.0178.A': 'Private Gewerbliche Anlagen'              
+            };
+            text = shortLabels[item.id] || text;
+          } else if (item.id === 'Q.DE.N.H.0000.L') {
+            // Spezieller Shortlabel für Deutschland BIP
+            text = 'Deutschland - Bruttoinlandsprodukt - preisbereinigt';
+          }
+          
+          text = text.replace(/-/g, ' ');
+          opt.text = text;
+          
+          if (item.id === 'Q.I9.Y.NAG.B1QG00.0000.Z0N.IND.I00' || 
+              item.id === 'Q.DE.N.H.0000.L') {
+            bipSel.appendChild(opt.cloneNode(true));
+          } else if (item.flow === 'BBNZ1' && item.id.startsWith('Q.DE.Y.G.')) {
+            verwSel.appendChild(opt.cloneNode(true));
+          }
+        });
+        
+        document.getElementById('dataInfo').innerText = 
+          `${bipSel.options.length + verwSel.options.length} Reihen geladen`;
+        
+        const sourceInfo = document.getElementById('sourceInfo');
+        sourceInfo.innerHTML = 'Allgemeiner Hinweis: Diese Daten stammen aus der volkswirtschaftlichen Gesamtrechnung der Deutschen Bundesbank. ' +
+          '<a href="https://www.bundesbank.de/dynamic/action/de/statistiken/zeitreihen-datenbanken/zeitreihen-datenbank/723444/723444?treeAnchor=GESAMT&statisticType=BBK_ITS" target="_blank">Daten bereitgestellt von der Deutschen Bundesbank.</a>';
+          
+      } catch (e) {
+        console.error('Fehler beim Laden des Index', e);
+        document.getElementById('dataInfo').innerText = 
+          `Fehler beim Laden des Index: ${e.message}. Stellen Sie sicher, dass die Dateien über einen HTTP-Server bereitgestellt werden (z.B. python -m http.server 8000)`;
+      }
+    }
+
+    async function loadData() {
+      const bipSel = document.getElementById('bipSelect');
+      const verwSel = document.getElementById('verwendungSelect');
+      const selectedOptions = [...bipSel.selectedOptions, ...verwSel.selectedOptions];
+      
+      if (selectedOptions.length === 0) {
+        currentData = null;
+        document.getElementById('dataInfo').innerText = 'Keine Reihe[n] ausgewählt';
+        return;
+      }
+      
+      currentData = [];
+      
+      for (const opt of selectedOptions) {
+        const seriesFile = opt.value;
+        const name = opt.text;
+        
+        try {
+          const response = await fetch(seriesFile);
+          if (!response.ok) throw new Error(`Netzwerkantwort nicht ok: ${response.status}`);
+          const text = await response.text();
+          const lines = text.split('\n');
+          const data = [];
+          
+          let start = 0;
+          for (let i = 0; i < lines.length; i++) {
+            if (/^\d{4}(-Q[1-4])?[,;]/.test(lines[i]) || /^\d{4}[-]/.test(lines[i])) {
+              start = i;
+              break;
+            }
+          }
+          
+          for (let i = start; i < lines.length; i++) {
+            const parts = lines[i].replace(/;/g, ',').split(',');
+            if (parts.length >= 2) {
+              const date = parts[0].trim();
+              const rawVal = parts[1].trim();
+              if (rawVal === '') continue;
+              const value = parseFloat(rawVal.replace(',', '.'));
+              if (!isNaN(value)) data.push({ date, value });
+            }
+          }
+          
+          currentData.push({
+            name,
+            data,
+            type: opt.parentElement === bipSel ? 'bip' : 'verw'
+          });
+        } catch (error) {
+          console.error('Fehler beim Laden', name, error);
+          document.getElementById('dataInfo').innerText += `\nFehler beim Laden von ${name}: ${error.message}`;
+        }
+      }
+      
+      document.getElementById('dataInfo').innerText = 
+        `${selectedOptions.length} Reihe[n] mit ${currentData.reduce((sum, s) => sum + s.data.length, 0)} Datenpunkten geladen`;
+    }
+
+    function downloadChart() {
+      if (!chart) {
+        alert('Kein Diagramm zum Herunterladen vorhanden');
+        return;
+      }
+      
+      // Erstelle einen Dateinamen mit aktuellem Datum
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const filename = `bundesbank-diagramm-${dateStr}.png`;
+      
+      // Erstelle einen temporären Link
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = chart.toBase64Image();
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    async function plotData() {
+      // Vorhandenen Plot automatisch entfernen
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+      
+      // Verstecke Download-Button vorerst
+      document.getElementById('downloadBtn').style.display = 'none';
+      
+      // Daten laden
+      await loadData();
+      if (!currentData || currentData.length === 0) {
+        alert('Keine Variable ausgewählt');
+        return;
+      }
+      
+      const bipScale = document.querySelector('input[name="bipScale"]:checked');
+      const log = bipScale ? bipScale.value === 'log' : false;
+      
+      const baseYear = parseInt(document.getElementById('baseYear').value);
+      const verwScale = document.querySelector('input[name="verwScale"]:checked');
+      const scale = verwScale ? verwScale.value : 'level';
+      const percent = document.getElementById('percentCheck').checked;
+      
+      let denomMap = null;
+      let denomName = null;
+      if (percent) {
+        const verwSel = document.getElementById('verwendungSelect');
+        if (verwSel && verwSel.options.length > 0) {
+          const denomOpt = verwSel.options[0];
+          const denomFile = denomOpt.value;
+          denomName = denomOpt.text;
+          
+          let denomSeriesInCurrent = currentData.find(s => s.name === denomName && s.type === 'verw');
+          let denomData = null;
+          
+          if (denomSeriesInCurrent) {
+            denomData = denomSeriesInCurrent.data;
+          } else {
+            try {
+              const r = await fetch(denomFile);
+              const text = await r.text();
+              const lines = text.split('\n');
+              let start = 0;
+              for (let i = 0; i < lines.length; i++) {
+                if (/^\d{4}(-Q[1-4])?[,;]/.test(lines[i]) || /^\d{4}[-]/.test(lines[i])) {
+                  start = i;
+                  break;
+                }
+              }
+              denomData = [];
+              for (let i = start; i < lines.length; i++) {
+                const parts = lines[i].replace(/;/g, ',').split(',');
+                if (parts.length >= 2) {
+                  const date = parts[0].trim();
+                  const rawVal = parts[1].trim();
+                  if (rawVal === '') continue;
+                  const value = parseFloat(rawVal.replace(',', '.'));
+                  if (!isNaN(value)) denomData.push({ date, value });
+                }
+              }
+            } catch (err) {
+              console.warn('Fehler beim Laden des Nenners', err);
+            }
+          }
+          
+          if (denomData && denomData.length > 0) {
+            denomMap = new Map(denomData.map(d => [d.date, d.value]));
+          }
+        }
+      }
+      
+      const allDates = new Set();
+      currentData.forEach(s => s.data.forEach(d => allDates.add(d.date)));
+      const labels = Array.from(allDates).sort();
+      
+      const datasets = [];
+      const colors = ['#007bff', '#dc3545', '#28a745', '#ffc107', '#6f42c1', 
+                      '#fd7e14', '#e83e8c', '#6c757d', '#17a2b8', '#20c997'];
+      
+      let yTitle = 'Wert';
+      const isBip = currentData.some(s => s.type === 'bip');
+      
+      if (isBip) {
+        yTitle = log ? 'Log-Index (100=' + baseYear + ')' : 'Index (100=' + baseYear + ')';
+      } else {
+        yTitle = scale === 'log' ? (percent ? 'Log % des BIP' : 'Log-Wert') : (percent ? '% des BIP' : 'Wert');
+      }
+      
+      currentData.forEach((series, idx) => {
+        const dataMap = new Map(series.data.map(d => [d.date, d.value]));
+        
+        const chartData = labels.map(date => {
+          let v = dataMap.has(date) ? dataMap.get(date) : null;
+          if (v === null) return null;
+          
+          if (series.type === 'bip') {
+            let val = v;
+            const baseVal = series.data.find(d => d.date.startsWith(baseYear.toString()))?.value;
+            if (baseVal) {
+              if (log) {
+                val = Math.log(v) - Math.log(baseVal) + Math.log(100);
+              } else {
+                val = (v / baseVal) * 100;
+              }
+            }
+            return val;
+          } else {
+            let val = v;
+            if (scale === 'log') val = Math.log(val);
+            if (percent && denomMap) {
+              const denomVal = denomMap.get(date);
+              if (!denomVal) return null;
+              if (denomName && series.name === denomName) {
+                val = 100;
+              } else {
+                val = (v / denomVal) * 100;
+              }
+              if (scale === 'log') val = Math.log(val);
+            }
+            return val;
+          }
+        });
+        
+        datasets.push({
+          label: series.name,
+          data: chartData,
+          borderColor: colors[idx % colors.length],
+          backgroundColor: colors[idx % colors.length] + '20',
+          spanGaps: false,
+          fill: false,
+          tension: 0.1
+        });
+      });
+      
+      chart = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false, 
+              layout: {
+                  padding: {
+                      bottom: 40
+                  }
+              },
+              plugins: {
+                  title: {
+                      display: true,
+                      text: currentData.map(s => s.name).join(', ').substring(0, 100),
+                      font: { size: 18 }
+                  },
+                  legend: {
+                      display: true,
+                      position: 'bottom'
+                  }
+              },
+              scales: {
+                  x: {
+                      title: { 
+                          display: true, 
+                          text: 'Jahr',
+                          padding: { top: 15, bottom: 15 }
+                      },
+                      ticks: {
+                          callback: function(value, index, values) {
+                              const fullDate = labels[index];
+                              if (fullDate && fullDate.includes('-')) {
+                                  const year = fullDate.split('-')[0];
+                                  return year;
+                              }
+                              return fullDate;
+                          },
+                          maxRotation: 45,
+                          minRotation: 45
+                      }
+                  },
+                  y: {
+                      title: { 
+                          display: true, 
+                          text: yTitle 
+                      }
+                  }
+              }
+          }
+      });
+      
+      // Zeige Download-Button an
+      document.getElementById('downloadBtn').style.display = 'block';
+    }
+
+    function clearPlot() {
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+      currentData = null;
+      document.getElementById('dataInfo').innerText = 'Diagramm gelöscht';
+      // Verstecke Download-Button
+      document.getElementById('downloadBtn').style.display = 'none';
+    }
+
+    document.getElementById('adjustedOnly').addEventListener('change', loadIndex);
+    loadIndex();
+  </script>
+</body>
+</html>
